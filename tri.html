@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tri du Crêpier — Simulateur Pédagogique</title>
+    <style>
+        :root {
+            --primary:#5d4037;--accent:#2ecc71;--target:#e67e22;
+            --info:#3498db;--danger:#e74c3c;--bg:#faf8f5;
+            --card:#fff;--text:#3e2723;--text-l:#8d6e63;
+            --border:#d7ccc8;--code-bg:#263238;--code-txt:#eceff1;
+            --code-hi:#69f0ae;--flip-hl:rgba(243,156,18,.25);
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+        .header{text-align:center;padding:16px 20px;background:linear-gradient(135deg,#5d4037,#795548);color:#fff}
+        .header h1{font-size:1.5rem}.header p{font-size:.82rem;opacity:.9;margin-top:4px}
+
+        .toolbar{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;align-items:center;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--border)}
+        .toolbar label{font-weight:600;font-size:.82rem;color:var(--primary);display:flex;align-items:center;gap:6px}
+        .toolbar select{padding:4px 10px;border:2px solid var(--border);border-radius:6px;font-size:.82rem}
+        .toolbar input[type=range]{width:110px;accent-color:var(--primary)}
+
+        .main{display:flex;gap:22px;max-width:1100px;margin:18px auto;padding:0 14px;align-items:flex-start}
+
+        /* Stack Column */
+        .col-stack{flex:0 0 370px}
+        .stats{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+        .stat{background:var(--card);padding:7px 13px;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);min-width:88px}
+        .stat-v{font-size:1.3rem;font-weight:bold;color:var(--primary)}.stat-l{font-size:.62rem;color:var(--text-l);text-transform:uppercase;letter-spacing:.4px}
+
+        #stack{display:flex;flex-direction:column;align-items:center;padding:10px 6px;background:rgba(255,255,255,.5);border:2px solid var(--border);border-bottom:none;border-radius:14px 14px 0 0;min-height:80px}
+        .plate{width:100%;height:11px;background:linear-gradient(#4e342e,#3e2723);border-radius:0 0 6px 6px}
+
+        .p-row{width:100%;display:flex;flex-direction:column;align-items:center}
+
+        .pancake{height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;position:relative;user-select:none;background:linear-gradient(to bottom,#ffca28,#ffb300);border:2px solid #f9a825;color:#5d4037;box-shadow:0 3px 5px rgba(0,0,0,.08);transition:all .35s ease}
+        .pancake[data-click="1"]{cursor:pointer}
+        .pancake.sorted{background:linear-gradient(to bottom,#66bb6a,#43a047)!important;border-color:#2e7d32!important;color:#fff!important}
+        .pancake.sorted::after{content:"✓";position:absolute;right:8px;font-size:.7rem}
+        .pancake.target{background:linear-gradient(to bottom,#ff9800,#e65100)!important;border-color:#bf360c!important;color:#fff!important;transform:scale(1.05);z-index:5}
+        .pancake.will-flip{box-shadow:0 0 0 3px var(--flip-hl),0 3px 5px rgba(0,0,0,.08)}
+        .pancake.flipping{transform:scaleY(-1) translateY(-8px);opacity:.55}
+
+        .spatula{width:75%;height:4px;margin:1px 0;border-radius:2px;background:transparent;transition:all .2s}
+        .spatula.visible{background:#f39c12;box-shadow:0 0 6px rgba(243,156,18,.5)}
+
+        .btns{display:flex;gap:7px;margin-top:14px;justify-content:center;flex-wrap:wrap}
+        .btn{padding:8px 14px;border:none;border-radius:7px;font-weight:600;font-size:.8rem;cursor:pointer;transition:.15s;box-shadow:0 3px 0 rgba(0,0,0,.12);display:flex;align-items:center;gap:5px}
+        .btn:active:not(:disabled){transform:translateY(2px);box-shadow:none}
+        .btn:disabled{opacity:.4;cursor:not-allowed}
+        .btn-r{background:var(--danger);color:#fff}.btn-p{background:#7e57c2;color:#fff}
+        .btn-b{background:var(--info);color:#fff}.btn-g{background:var(--accent);color:#fff}
+
+        .status{text-align:center;margin-top:10px;font-style:italic;color:var(--text-l);font-size:.85rem;min-height:1.4em}
+
+        /* Info Column */
+        .col-info{flex:1;min-width:270px;display:flex;flex-direction:column;gap:12px}
+        .card{background:var(--card);border-radius:11px;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,.06)}
+        .card-h{padding:10px 14px;background:var(--primary);color:#fff;font-weight:600;font-size:.88rem}
+        .card-b{padding:12px 14px}
+
+        .code{background:var(--code-bg);padding:14px;font-family:'Courier New',monospace;font-size:.8rem;line-height:1.8}
+        .cl{display:block;padding:2px 8px;border-left:3px solid transparent;border-radius:3px;transition:.3s;color:var(--code-txt)}
+        .cl .ln{display:inline-block;width:18px;text-align:right;margin-right:10px;color:#546e7a;user-select:none}
+        .cl.on{background:rgba(105,240,174,.12);border-left-color:var(--code-hi);color:var(--code-hi)}
+
+        .tip{padding:10px 13px;background:#fff8e1;border-left:4px solid #ffa000;border-radius:0 8px 8px 0;font-size:.8rem;line-height:1.5}
+
+        .log{max-height:170px;overflow-y:auto;font-family:monospace;font-size:.72rem}
+        .log-r{padding:5px 10px;border-bottom:1px solid #f5f5f5;display:flex;gap:7px;align-items:baseline}
+        .log-r:nth-child(even){background:#fafafa}
+        .log-n{font-weight:bold;color:var(--info);min-width:26px}.log-a{color:var(--text)}.log-s{color:var(--text-l);font-size:.68rem}
+        .log-e{padding:14px;text-align:center;color:var(--text-l);font-style:italic}
+
+        .ok{max-width:380px;margin:10px auto;background:linear-gradient(135deg,#43a047,#2e7d32);color:#fff;padding:13px 18px;border-radius:10px;text-align:center;font-weight:600;animation:pop .4s ease}
+        @keyframes pop{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
+
+        @media(max-width:800px){
+            .main{flex-direction:column;align-items:center}
+            .col-stack{flex:none;width:100%;max-width:400px}
+            .col-info{width:100%;max-width:500px}
+        }
+        @media(max-width:480px){
+            .header h1{font-size:1.2rem}.toolbar{gap:8px;padding:8px}
+            .stats{gap:6px}.stat{min-width:72px;padding:5px 8px}.stat-v{font-size:1.1rem}
+            .btns{gap:5px}.btn{padding:7px 10px;font-size:.75rem}
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🥞 Simulateur du Tri Crêpier</h1>
+    <p>Triez la pile : plus grande (bas) → plus petite (haut)</p>
+</div>
+
+<div class="toolbar">
+    <label>Crêpes : <input type="range" id="inp-n" min="3" max="10" value="5"> <span id="lbl-n">5</span></label>
+    <label>Mode :
+        <select id="sel-mode">
+            <option value="manual">🖐️ Manuel</option>
+            <option value="step">📐 Pas à pas</option>
+            <option value="auto">🚀 Automatique</option>
+        </select>
+    </label>
+    <label>Étiquettes :
+        <select id="sel-lbl">
+            <option value="simple">1, 2, 3…</option>
+            <option value="real">Tailles (cm)</option>
+        </select>
+    </label>
+</div>
+
+<div class="main">
+    <div class="col-stack">
+        <div class="stats">
+            <div class="stat"><div class="stat-v" id="s-f">0</div><div class="stat-l">Retournements</div></div>
+            <div class="stat"><div class="stat-v" id="s-b">—</div><div class="stat-l">Borne 2n−3</div></div>
+            <div class="stat"><div class="stat-v" id="s-u">—</div><div class="stat-l">Non triées</div></div>
+        </div>
+        <div id="stack"></div>
+        <div class="plate"></div>
+        <div class="btns">
+            <button class="btn btn-r" id="b-rst">🔄 Nouveau</button>
+            <button class="btn btn-p" id="b-und" disabled>↩ Annuler</button>
+            <button class="btn btn-b" id="b-stp" style="display:none">⏭ Étape</button>
+            <button class="btn btn-g" id="b-aut" style="display:none">▶ Lancer</button>
+        </div>
+        <p class="status" id="msg" role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="col-info">
+        <div class="card">
+            <div class="card-h">📝 Algorithme</div>
+            <div class="code">
+                <span class="cl" id="c0"><span class="ln">1</span>Tant que pile non triée :</span>
+                <span class="cl" id="c1"><span class="ln">2</span>  max ← plus grande non triée</span>
+                <span class="cl" id="c2"><span class="ln">3</span>  Si max pas au sommet :</span>
+                <span class="cl" id="c3"><span class="ln">4</span>    Retourner → sommet</span>
+                <span class="cl" id="c4"><span class="ln">5</span>  Retourner → position finale</span>
+                <span class="cl" id="c5"><span class="ln">6</span>Pile triée ✓</span>
+            </div>
+        </div>
+        <div class="tip">
+            💡 <b>Principe :</b> On place les plus grandes crêpes en bas, une par une.
+            Chaque crêpe nécessite <b>au plus 2 retournements</b>.
+            Borne supérieure : <b>2n − 3</b> (pour n &gt; 2).
+        </div>
+        <div class="card">
+            <div class="card-h">📋 Journal des opérations</div>
+            <div class="card-b" style="padding:0"><div class="log" id="log"><div class="log-e">Aucune opération.</div></div></div>
+        </div>
+    </div>
+</div>
+
+<div id="res"></div>
+
+<script>
+/* ====== ÉTAT ====== */
+const S={p:[],n:5,flips:0,hist:[],busy:false,mode:'manual',lbl:'simple',
+         algo:'IDLE',boundary:0,tIdx:-1,rsz:[]};
+
+const $=id=>document.getElementById(id);
+const stk=$('stack');
+
+/* ====== INIT ====== */
+function init(){
+    S.n=+$('inp-n').value;
+    S.p=shuf(S.n);
+    S.rsz=Array.from({length:S.n},(_,i)=>8+i*2);
+    S.flips=0;S.hist=[];S.busy=false;S.algo='IDLE';S.tIdx=-1;
+    $('res').innerHTML='';
+    clrLog();clrHL();draw();setMsg(tip());updBtn();
+}
+
+function shuf(n){
+    let a;
+    do{
+        a=Array.from({length:n},(_,i)=>i+1);
+        for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+    }while(ok(a));
+    return a;
+}
+
+function ok(a){for(let i=0;i<a.length-1;i++)if(a[i]>a[i+1])return false;return true;}
+
+/* ====== RENDU ====== */
+function draw(){
+    stk.innerHTML='';
+    const ref=[...S.p].sort((a,b)=>a-b);
+    const man=S.mode==='manual'&&!ok(S.p)&&!S.busy;
+
+    S.p.forEach((v,i)=>{
+        const row=document.createElement('div');row.className='p-row';
+
+        const el=document.createElement('div');
+        el.className='pancake';
+        el.style.width=(25+(v/S.n)*70)+'%';
+        el.textContent=lbl(v);
+        el.dataset.index=i;
+
+        let fin=true;
+        for(let j=i;j<S.n;j++){if(S.p[j]!==ref[j]){fin=false;break;}}
+
+        if(fin)el.classList.add('sorted');
+        else if(S.tIdx>=0&&v===S.p[S.tIdx])el.classList.add('target');
+
+        if(man){el.dataset.click='1';el.setAttribute('tabindex','0');
+                el.setAttribute('role','button');
+                el.setAttribute('aria-label','Retourner les '+(i+1)+' première(s) crêpe(s)');}
+
+        const sp=document.createElement('div');
+        sp.className='spatula';sp.dataset.si=i;
+
+        row.appendChild(el);row.appendChild(sp);stk.appendChild(row);
+    });
+
+    $('s-f').textContent=S.flips;
+    $('s-b').textContent=S.n>2?2*S.n-3:S.n===2?1:0;
+    let u=0;for(let i=S.n-1;i>=0;i--){if(S.p[i]!==ref[i]){u=i+1;break;}}
+    $('s-u').textContent=u;
+    $('lbl-n').textContent=S.n;
+    $('b-und').disabled=S.hist.length===0||S.busy;
+}
+
+function lbl(v){return S.lbl==='real'?S.rsz[v-1]+'cm':String(v);}
+
+/* ====== FLIP ====== */
+async function doFlip(idx,reason){
+    if(idx<=0)return;
+    S.busy=true;updBtn();
+
+    const bef=[...S.p];
+
+    const els=stk.querySelectorAll('.pancake');
+    for(let i=0;i<=idx;i++)els[i]?.classList.add('flipping');
+    await slp(420);
+
+    let l=0,r=idx;
+    while(l<r){[S.p[l],S.p[r]]=[S.p[r],S.p[l]];l++;r--;}
+    S.flips++;
+
+    addLog(S.flips,reason||'Flip('+(idx+1)+')',bef,[...S.p]);
+
+    S.busy=false;draw();updBtn();
+    if(ok(S.p))done();
+}
+
+/* ====== MANUEL ====== */
+function manFlip(idx){
+    if(S.busy||ok(S.p)||S.mode!=='manual')return;
+    if(idx===0){setMsg('Retourner 1 seule crêpe ne change rien !');return;}
+    S.hist.push({p:[...S.p],f:S.flips});
+    setMsg('Retournement positions 1 → '+(idx+1)+'…');
+    doFlip(idx,'Manuel : 1→'+(idx+1)).then(()=>{if(!ok(S.p))setMsg('Cliquez sur une crêpe pour retourner.');});
+}
+
+let hv=-1;
+
+stk.addEventListener('mouseover',e=>{
+    if(S.mode!=='manual'||S.busy||ok(S.p)){clrHv();return;}
+    const el=e.target.closest('.pancake');
+    if(!el){clrHv();return;}
+    const i=+el.dataset.index;if(i===hv)return;hv=i;
+    stk.querySelectorAll('.pancake').forEach(p=>{p.classList.toggle('will-flip',+p.dataset.index<=i);});
+    stk.querySelectorAll('.spatula').forEach(s=>{s.classList.toggle('visible',+s.dataset.si===i);});
+});
+
+stk.addEventListener('mouseleave',()=>clrHv());
+
+stk.addEventListener('click',e=>{
+    const el=e.target.closest('.pancake');
+    if(el)manFlip(+el.dataset.index);
+});
+
+stk.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const el=e.target.closest('.pancake');
+    if(el){e.preventDefault();manFlip(+el.dataset.index);}
+});
+
+function clrHv(){
+    hv=-1;
+    stk.querySelectorAll('.will-flip').forEach(e=>e.classList.remove('will-flip'));
+    stk.querySelectorAll('.spatula.visible').forEach(e=>e.classList.remove('visible'));
+}
+
+/* ====== ALGO PAS À PAS ====== */
+async function step(){
+    if(S.busy||S.algo==='DONE')return;
+    const ref=[...S.p].sort((a,b)=>a-b);
+
+    switch(S.algo){
+        case'IDLE':{
+            hl('c0');
+            let b=-1;for(let i=S.n-1;i>=0;i--){if(S.p[i]!==ref[i]){b=i;break;}}
+            if(b<0){S.algo='DONE';hl('c5');done();return;}
+            S.boundary=b;S.algo='FIND';
+            setMsg((b+1)+' crêpe(s) non triée(s).');
+            break;}
+
+        case'FIND':{
+            hl('c1');
+            let mx=-1,mi=-1;
+            for(let i=0;i<=S.boundary;i++){if(S.p[i]>mx){mx=S.p[i];mi=i;}}
+            S.tIdx=mi;draw();
+            if(mi===0){hl('c2');setMsg(lbl(mx)+' déjà au sommet → placement.');S.algo='FLIP_PL';}
+            else{hl('c2');setMsg(lbl(mx)+' en position '+(mi+1)+' → amener au sommet.');S.algo='FLIP_TOP';}
+            break;}
+
+        case'FLIP_TOP':{
+            hl('c3');
+            S.hist.push({p:[...S.p],f:S.flips});
+            const l=lbl(S.p[S.tIdx]);
+            setMsg('Retournement : '+l+' → sommet.');
+            await doFlip(S.tIdx,'Algo : '+l+' → sommet');
+            S.tIdx=0;S.algo='FLIP_PL';
+            break;}
+
+        case'FLIP_PL':{
+            hl('c4');
+            S.hist.push({p:[...S.p],f:S.flips});
+            const l=lbl(S.p[0]);
+            setMsg('Retournement : '+l+' → position '+(S.boundary+1)+'.');
+            await doFlip(S.boundary,'Algo : '+l+' → pos '+(S.boundary+1));
+            S.tIdx=-1;S.algo='IDLE';
+            break;}
+    }
+}
+
+/* ====== AUTO ====== */
+async function auto(){
+    if(S.busy)return;
+    S.algo='IDLE';setDis(true);
+    while(S.algo!=='DONE'){await step();await slp(650);}
+    setDis(false);updBtn();
+}
+
+/* ====== ANNULER ====== */
+function undo(){
+    if(!S.hist.length||S.busy)return;
+    const pr=S.hist.pop();S.p=pr.p;S.flips=pr.f;
+    S.algo='IDLE';S.tIdx=-1;
+    const rows=$('log').querySelectorAll('.log-r');
+    if(rows.length)rows[rows.length-1].remove();
+    if(!$('log').querySelector('.log-r'))$('log').innerHTML='<div class="log-e">Aucune opération.</div>';
+    $('res').innerHTML='';clrHL();draw();setMsg('↩ Annulé.');updBtn();
+}
+
+/* ====== HELPERS ====== */
+function setMsg(t){$('msg').textContent=t;}
+function hl(id){document.querySelectorAll('.cl').forEach(l=>l.classList.remove('on'));if(id)$(id)?.classList.add('on');}
+function clrHL(){hl(null);}
+function tip(){return{manual:'Cliquez sur une crêpe pour retourner au-dessus.',step:'Cliquez « Étape » pour suivre l\'algorithme.',auto:'Cliquez « Lancer » pour le tri automatique.'}[S.mode];}
+
+function updBtn(){
+    const d=ok(S.p);
+    $('b-und').disabled=!S.hist.length||S.busy;
+    $('b-stp').style.display=S.mode==='step'?'':'none';
+    $('b-aut').style.display=S.mode==='auto'?'':'none';
+    $('b-stp').disabled=d||S.busy;
+    $('b-aut').disabled=d||S.busy;
+}
+
+function setDis(d){
+    ['b-rst','b-und','b-stp','b-aut'].forEach(id=>$(id).disabled=d);
+    $('inp-n').disabled=d;$('sel-mode').disabled=d;$('sel-lbl').disabled=d;
+}
+
+function done(){
+    const bd=S.n>2?2*S.n-3:S.n===2?1:0;
+    const g=S.flips<=bd;
+    $('res').innerHTML='<div class="ok">✅ Trié en '+S.flips+' retournement(s) !<br><small>Borne : '+bd+' — '+(g?'🏆 Bravo, dans la borne !':'📈 Au-dessus de la borne.')+'</small></div>';
+    S.algo='DONE';updBtn();
+}
+
+/* ====== LOG ====== */
+function addLog(n,a,b,af){
+    const lg=$('log');
+    const e=lg.querySelector('.log-e');if(e)e.remove();
+    const fmt=x=>'['+x.map(v=>lbl(v)).join(', ')+']';
+    const r=document.createElement('div');r.className='log-r';
+    r.innerHTML='<span class="log-n">#'+n+'</span><span class="log-a">'+a+'</span><span class="log-s">'+fmt(b)+' → '+fmt(af)+'</span>';
+    lg.appendChild(r);lg.scrollTop=lg.scrollHeight;
+}
+function clrLog(){$('log').innerHTML='<div class="log-e">Aucune opération.</div>';}
+function slp(ms){return new Promise(r=>setTimeout(r,ms));}
+
+/* ====== ÉVÉNEMENTS ====== */
+$('inp-n').addEventListener('input',init);
+$('sel-mode').addEventListener('change',e=>{S.mode=e.target.value;S.algo='IDLE';S.tIdx=-1;clrHL();draw();setMsg(tip());updBtn();});
+$('sel-lbl').addEventListener('change',e=>{S.lbl=e.target.value;draw();});
+$('b-rst').addEventListener('click',init);
+$('b-und').addEventListener('click',undo);
+$('b-stp').addEventListener('click',step);
+$('b-aut').addEventListener('click',auto);
+
+/* ====== DÉMARRAGE ====== */
+init();
+</script>
+</body>
+</html>
